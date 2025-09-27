@@ -103,3 +103,30 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .flip-card {
+    perspective: 1000px;
+  }
+  
+  .flip-card-inner {
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+  }
+  
+  .flip-card.flipped .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+  
+  .flip-card-front, .flip-card-back {
+    backface-visibility: hidden;
+  }
+  
+  .flip-card-back {
+    transform: rotateY(180deg);
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-foreground)) 100%);
+  }
+}
