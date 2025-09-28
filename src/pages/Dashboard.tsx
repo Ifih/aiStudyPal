@@ -30,11 +30,6 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [guestGenerationCount, setGuestGenerationCount] = useState(0);
 
-  // Redirect if not authenticated and not guest
-  if (!authLoading && !user && !isGuest) {
-    return <Navigate to="/signin" replace />;
-  }
-
   // Load existing flashcards for authenticated users
   useEffect(() => {
     if (user && !isGuest) {
@@ -43,6 +38,11 @@ export default function Dashboard() {
       setLoadingFlashcards(false);
     }
   }, [user, isGuest]);
+
+  // Redirect if not authenticated and not guest
+  if (!authLoading && !user && !isGuest) {
+    return <Navigate to="/signin" replace />;
+  }
 
   const loadFlashcards = async () => {
     try {
