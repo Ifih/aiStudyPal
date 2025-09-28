@@ -1,9 +1,17 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain, Sparkles, Clock, Target } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Landing() {
+  const { enterGuestMode } = useAuth();
+  const navigate = useNavigate();
+
+  const handleGuestMode = () => {
+    enterGuestMode();
+    navigate('/dashboard');
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       {/* Hero Section */}
@@ -28,6 +36,14 @@ export default function Landing() {
                   Sign In
                 </Button>
               </Link>
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                className="text-lg px-8 py-3"
+                onClick={handleGuestMode}
+              >
+                Try as Guest (4 flashcards max)
+              </Button>
             </div>
           </div>
         </div>

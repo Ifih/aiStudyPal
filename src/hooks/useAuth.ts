@@ -6,6 +6,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -50,15 +51,23 @@ export function useAuth() {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    setIsGuest(false);
     return { error };
+  };
+
+  const enterGuestMode = () => {
+    setIsGuest(true);
+    setLoading(false);
   };
 
   return {
     user,
     session,
     loading,
+    isGuest,
     signUp,
     signIn,
     signOut,
+    enterGuestMode,
   };
 }

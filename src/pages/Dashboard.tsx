@@ -20,7 +20,7 @@ interface FlashcardData {
 }
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isGuest } = useAuth();
   const { toast } = useToast();
   
   const [notes, setNotes] = useState('');
@@ -28,18 +28,21 @@ export default function Dashboard() {
   const [flashcards, setFlashcards] = useState<FlashcardData[]>([]);
   const [loadingFlashcards, setLoadingFlashcards] = useState(true);
   const [error, setError] = useState('');
+  const [guestGenerationCount, setGuestGenerationCount] = useState(0);
 
-  // Redirect if not authenticated
-  if (!authLoading && !user) {
+  // Redirect if not authenticated and not guest
+  if (!authLoading && !user && !isGuest) {
     return <Navigate to="/signin" replace />;
   }
 
-  // Load existing flashcards
+  // Load existing flashcards for authenticated users
   useEffect(() => {
-    if (user) {
+    if (user && !isGuest) {
       loadFlashcards();
+    } else if (isGuest) {
+      setLoadingFlashcards(false);
     }
-  }, [user]);
+  }, [user, isGuest]);
 
   const loadFlashcards = async () => {
     try {
@@ -68,6 +71,11 @@ export default function Dashboard() {
       return;
     }
 
+    if (isGuest && guestGenerationCount >= 1) {
+      setError('Guest users can only generate flashcards once. Sign up for unlimited access!');
+      return;
+    }
+
     setGenerating(true);
     setError('');
 
@@ -79,28 +87,50 @@ export default function Dashboard() {
       if (error) throw error;
 
       if (data?.flashcards && Array.isArray(data.flashcards)) {
-        // Save generated flashcards to database
-        const flashcardsToSave = data.flashcards.map((card: any) => ({
-          user_id: user?.id,
-          question: card.question,
-          answer: card.answer,
-          notes: notes.trim(),
-        }));
+        // Limit guest users to 4 flashcards max
+        const limitedFlashcards = isGuest ? data.flashcards.slice(0, 4) : data.flashcards;
+        
+        if (isGuest) {
+          // For guest users, store in local state only
+          const guestCards = limitedFlashcards.map((card: any, index: number) => ({
+            id: `guest-${Date.now()}-${index}`,
+            question: card.question,
+            answer: card.answer,
+            notes: notes.trim(),
+            created_at: new Date().toISOString(),
+          }));
+          
+          setFlashcards([...guestCards, ...flashcards]);
+          setGuestGenerationCount(prev => prev + 1);
+        } else {
+          // For authenticated users, save to database
+          const flashcardsToSave = limitedFlashcards.map((card: any) => ({
+            user_id: user?.id,
+            question: card.question,
+            answer: card.answer,
+            notes: notes.trim(),
+          }));
 
-        const { data: savedCards, error: saveError } = await supabase
-          .from('flashcards')
-          .insert(flashcardsToSave)
-          .select();
+          const { data: savedCards, error: saveError } = await supabase
+            .from('flashcards')
+            .insert(flashcardsToSave)
+            .select();
 
-        if (saveError) throw saveError;
+          if (saveError) throw saveError;
 
-        // Update local state with new flashcards
-        setFlashcards([...savedCards, ...flashcards]);
+          // Update local state with new flashcards
+          setFlashcards([...savedCards, ...flashcards]);
+        }
+        
         setNotes('');
+        
+        const message = isGuest 
+          ? `Generated ${limitedFlashcards.length} flashcards (guest limit: 4 max). Sign up for unlimited access!`
+          : `Generated ${limitedFlashcards.length} flashcards from your notes.`;
         
         toast({
           title: "Flashcards generated successfully!",
-          description: `Generated ${data.flashcards.length} flashcards from your notes.`,
+          description: message,
         });
       } else {
         throw new Error('Invalid response format from AI service');
@@ -120,14 +150,20 @@ export default function Dashboard() {
 
   const deleteFlashcard = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('flashcards')
-        .delete()
-        .eq('id', id);
+      if (isGuest || id.startsWith('guest-')) {
+        // For guest users, delete from local state only
+        setFlashcards(flashcards.filter(card => card.id !== id));
+      } else {
+        // For authenticated users, delete from database
+        const { error } = await supabase
+          .from('flashcards')
+          .delete()
+          .eq('id', id);
 
-      if (error) throw error;
+        if (error) throw error;
+        setFlashcards(flashcards.filter(card => card.id !== id));
+      }
 
-      setFlashcards(flashcards.filter(card => card.id !== id));
       toast({
         title: "Flashcard deleted",
         description: "The flashcard has been removed.",
@@ -154,7 +190,17 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Your Study Dashboard</h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold">
+              {isGuest ? 'Guest Study Dashboard' : 'Your Study Dashboard'}
+            </h1>
+            {isGuest && (
+              <div className="text-sm text-muted-foreground bg-card p-3 rounded-lg border">
+                <p>Guest Mode - {guestGenerationCount}/1 generations used</p>
+                <p className="text-xs">Sign up for unlimited access!</p>
+              </div>
+            )}
+          </div>
           
           {/* Generate Flashcards Section */}
           <Card className="mb-8">

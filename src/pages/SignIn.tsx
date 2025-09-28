@@ -21,7 +21,7 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn } = useAuth();
+  const { signIn, enterGuestMode } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -56,6 +56,11 @@ export default function SignIn() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGuestMode = () => {
+    enterGuestMode();
+    navigate('/dashboard');
   };
 
   return (
@@ -109,6 +114,16 @@ export default function SignIn() {
             </Button>
           </form>
           
+          <div className="mt-4">
+            <Button 
+              variant="secondary" 
+              className="w-full"
+              onClick={handleGuestMode}
+            >
+              Try as Guest (4 flashcards max)
+            </Button>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{' '}

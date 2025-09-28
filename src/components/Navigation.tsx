@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { BookOpen, LogOut, User } from 'lucide-react';
 
 export function Navigation() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isGuest } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -20,19 +20,29 @@ export function Navigation() {
           </Link>
           
           <div className="flex items-center space-x-4">
-            {user ? (
+            {user || isGuest ? (
               <>
                 <Link to="/dashboard">
                   <Button variant="ghost">Dashboard</Button>
                 </Link>
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4" />
-                  <span className="text-sm text-muted-foreground">{user.email}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {isGuest ? 'Guest User' : user?.email}
+                  </span>
                 </div>
-                <Button onClick={handleSignOut} variant="outline" size="sm">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
+                {isGuest ? (
+                  <Link to="/signup">
+                    <Button variant="default" size="sm">
+                      Sign Up for Full Access
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button onClick={handleSignOut} variant="outline" size="sm">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                )}
               </>
             ) : (
               <>
