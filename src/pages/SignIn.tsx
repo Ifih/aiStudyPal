@@ -120,7 +120,7 @@ export default function SignIn() {
               className="w-full"
               onClick={handleGuestMode}
             >
-              Try as Guest (4 flashcards max)
+              Try as Guest
             </Button>
           </div>
 

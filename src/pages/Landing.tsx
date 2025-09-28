@@ -42,7 +42,7 @@ export default function Landing() {
                 className="text-lg px-8 py-3"
                 onClick={handleGuestMode}
               >
-                Try as Guest (4 flashcards max)
+                Try as Guest
               </Button>
             </div>
           </div>
