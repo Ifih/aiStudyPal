@@ -6,7 +6,10 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isGuest, setIsGuest] = useState(() => {
+    // Initialize guest state from localStorage
+    return localStorage.getItem('isGuest') === 'true';
+  });
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -52,12 +55,14 @@ export function useAuth() {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     setIsGuest(false);
+    localStorage.removeItem('isGuest');
     return { error };
   };
 
   const enterGuestMode = () => {
     setIsGuest(true);
     setLoading(false);
+    localStorage.setItem('isGuest', 'true');
   };
 
   return {
