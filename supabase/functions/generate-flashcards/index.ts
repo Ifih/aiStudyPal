@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,27 +27,14 @@ serve(async (req) => {
 
     console.log('Generating flashcards for notes:', notes.substring(0, 100) + '...');
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const huggingFaceApiKey = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+    if (!huggingFaceApiKey) {
+      throw new Error('Hugging Face API key not configured');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an educational assistant that creates flashcards from study notes. Always respond with valid JSON only.'
-          },
-          {
-            role: 'user',
-            content: `Generate 3-5 educational flashcards from the following study notes. Each flashcard should have a clear question and a comprehensive answer that helps with learning and retention.
+    const hf = new HfInference(huggingFaceApiKey);
+
+    const prompt = `You are an educational assistant that creates flashcards from study notes. Generate 3-5 educational flashcards from the following study notes. Each flashcard should have a clear question and a comprehensive answer that helps with learning and retention.
 
 Study Notes:
 ${notes}
@@ -67,22 +55,21 @@ Return your response as a valid JSON object in this exact format:
   ]
 }
 
-Only return the JSON object, no additional text.`
-          }
-        ],
-        max_tokens: 1000,
+Only return the JSON object, no additional text.`;
+
+    const result = await hf.textGeneration({
+      model: 'microsoft/DialoGPT-medium',
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: 1000,
         temperature: 0.7,
-      }),
+        return_full_text: false,
+      },
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
-    }
+    console.log('Raw AI response:', result);
 
-    const data = await response.json();
-    const generatedText = data.choices[0].message.content;
+    const generatedText = result.generated_text;
 
     console.log('Raw AI response:', generatedText);
 
@@ -143,7 +130,7 @@ Only return the JSON object, no additional text.`
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        details: 'Failed to generate flashcards from the provided notes'
+        details: 'Failed to generate flashcards from the provided notes using Hugging Face'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 

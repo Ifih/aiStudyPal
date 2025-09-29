@@ -138,14 +138,14 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error('Error generating flashcards:', error);
       
-      // Handle specific OpenAI quota error
+      // Handle specific API errors
       let errorMessage = 'Failed to generate flashcards. Please try again.';
       let errorDescription = "Please check your notes and try again.";
       
       if (error.message && error.message.includes('quota')) {
         errorMessage = 'API quota exceeded';
         errorDescription = 'The AI service has reached its usage limit. Please try again later or contact support.';
-      } else if (error.message && error.message.includes('OpenAI API error')) {
+      } else if (error.message && (error.message.includes('OpenAI API error') || error.message.includes('Hugging Face'))) {
         errorMessage = 'AI service unavailable';
         errorDescription = 'The AI service is temporarily unavailable. Please try again in a few minutes.';
       }
