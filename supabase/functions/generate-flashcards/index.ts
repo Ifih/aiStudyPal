@@ -34,94 +34,71 @@ serve(async (req) => {
 
     const hf = new HfInference(huggingFaceApiKey);
 
-    const prompt = `You are an educational assistant that creates flashcards from study notes. Generate 3-5 educational flashcards from the following study notes. Each flashcard should have a clear question and a comprehensive answer that helps with learning and retention.
-
-Study Notes:
-${notes}
-
-Create flashcards that:
-1. Test key concepts and important facts
-2. Use clear, specific questions
-3. Provide detailed, helpful answers
-4. Focus on the most important information
-
-Return your response as a valid JSON object in this exact format:
-{
-  "flashcards": [
-    {
-      "question": "What is...",
-      "answer": "The answer is..."
-    }
-  ]
-}
-
-Only return the JSON object, no additional text.`;
-
-    const result = await hf.textGeneration({
-      model: 'microsoft/DialoGPT-medium',
-      inputs: prompt,
+    console.log('Generating questions from notes...');
+    
+    // Step 1: Generate questions using T5 model
+    const questionResults = await hf.textGeneration({
+      model: 'mrm8488/t5-base-finetuned-question-generation-ap',
+      inputs: `generate questions: ${notes}`,
       parameters: {
-        max_new_tokens: 1000,
+        max_new_tokens: 200,
         temperature: 0.7,
         return_full_text: false,
       },
     });
 
-    console.log('Raw AI response:', result);
+    console.log('Questions generated:', questionResults);
 
-    const generatedText = result.generated_text;
+    // Extract questions from the response
+    const generatedQuestions = questionResults.generated_text
+      .split('\n')
+      .filter((q: string) => q.trim().length > 0)
+      .map((q: string) => q.replace(/^\d+\.\s*/, '').trim())
+      .slice(0, 5);
 
-    console.log('Raw AI response:', generatedText);
+    if (generatedQuestions.length === 0) {
+      throw new Error('No questions could be generated from the notes');
+    }
 
-    // Clean the response text
-    let cleanedText = generatedText.trim();
+    console.log('Processing questions:', generatedQuestions);
+
+    // Step 2: Generate answers for each question using RoBERTa model
+    const flashcards = [];
     
-    // Remove any potential markdown formatting
-    if (cleanedText.startsWith('```json')) {
-      cleanedText = cleanedText.replace(/```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/```\s*/, '').replace(/\s*```$/, '');
+    for (const question of generatedQuestions) {
+      try {
+        console.log(`Generating answer for: ${question}`);
+        
+        const answerResult = await hf.questionAnswering({
+          model: 'deepset/roberta-base-squad2',
+          inputs: {
+            question: question,
+            context: notes,
+          },
+        });
+
+        console.log('Answer generated:', answerResult);
+
+        if (answerResult.answer && answerResult.answer.trim().length > 0) {
+          flashcards.push({
+            question: question,
+            answer: answerResult.answer.trim(),
+          });
+        }
+      } catch (error) {
+        console.error(`Error generating answer for question "${question}":`, error);
+        // Continue with other questions even if one fails
+      }
     }
 
-    // Find the JSON object in the response
-    const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No valid JSON found in AI response');
+    if (flashcards.length === 0) {
+      throw new Error('No valid flashcards could be generated from the notes');
     }
 
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error('JSON parsing error:', parseError);
-      throw new Error('Failed to parse AI response as JSON');
-    }
-
-    // Validate the response structure
-    if (!parsedResponse.flashcards || !Array.isArray(parsedResponse.flashcards)) {
-      throw new Error('Invalid response format: missing flashcards array');
-    }
-
-    // Validate each flashcard
-    const validatedFlashcards = parsedResponse.flashcards.filter((card: any) => {
-      return card.question && card.answer && 
-             typeof card.question === 'string' && 
-             typeof card.answer === 'string' &&
-             card.question.trim().length > 0 &&
-             card.answer.trim().length > 0;
-    }).map((card: any) => ({
-      question: card.question.trim(),
-      answer: card.answer.trim()
-    }));
-
-    if (validatedFlashcards.length === 0) {
-      throw new Error('No valid flashcards generated from the notes');
-    }
-
-    console.log(`Successfully generated ${validatedFlashcards.length} flashcards`);
+    console.log(`Successfully generated ${flashcards.length} flashcards`);
 
     return new Response(
-      JSON.stringify({ flashcards: validatedFlashcards }),
+      JSON.stringify({ flashcards }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
