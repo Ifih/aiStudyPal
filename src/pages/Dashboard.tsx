@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Flashcard } from '@/components/Flashcard';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Sparkles, History, PlusCircle } from 'lucide-react';
+import { Loader2, Sparkles, History, PlusCircle, Trash2 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 interface FlashcardData {
@@ -191,6 +191,37 @@ export default function Dashboard() {
     }
   };
 
+  const clearAllFlashcards = async () => {
+    if (flashcards.length === 0) return;
+
+    try {
+      if (isGuest) {
+        setFlashcards([]);
+        setGuestGenerationCount(0);
+      } else {
+        const { error } = await supabase
+          .from('flashcards')
+          .delete()
+          .eq('user_id', user?.id);
+
+        if (error) throw error;
+        setFlashcards([]);
+      }
+
+      toast({
+        title: "All flashcards cleared",
+        description: "All flashcards have been removed.",
+      });
+    } catch (error) {
+      console.error('Error clearing flashcards:', error);
+      toast({
+        title: "Clear failed",
+        description: "Failed to clear all flashcards.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (authLoading || loadingFlashcards) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -245,24 +276,36 @@ export default function Dashboard() {
                 />
               </div>
               
-              <Button 
-                onClick={generateFlashcards}
-                disabled={generating || !notes.trim()}
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Flashcards...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Generate Flashcards
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={generateFlashcards}
+                  disabled={generating || !notes.trim()}
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating Flashcards...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Flashcards
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={clearAllFlashcards}
+                  disabled={generating || flashcards.length === 0}
+                  size="lg"
+                  variant="destructive"
+                  className="sm:w-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
