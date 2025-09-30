@@ -74,15 +74,34 @@ serve(async (req) => {
         console.log('QA result:', qaResult);
 
         if (qaResult.answer && qaResult.answer.trim().length > 0) {
-          // Create a flashcard with a question derived from the sentence
-          const question = `What ${sentence.split(' ').slice(0, 5).join(' ')}...?`.replace(/\.\.\.\?$/, '?');
+          // Create a more natural question based on the answer
+          const answer = qaResult.answer.trim();
+          
+          // Create questions based on the answer type
+          let question;
+          if (sentence.toLowerCase().includes('what is') || sentence.toLowerCase().includes('what are')) {
+            // Extract the subject from sentences that define things
+            const match = sentence.match(/(?:What is|What are)\s+([^?]+)/i);
+            question = match ? `What is ${match[1].trim()}?` : `What is ${answer}?`;
+          } else if (sentence.toLowerCase().includes('how')) {
+            question = `How ${sentence.split(/how/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `What is the explanation?`;
+          } else if (sentence.toLowerCase().includes('when')) {
+            question = `When ${sentence.split(/when/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `When does this occur?`;
+          } else if (sentence.toLowerCase().includes('where')) {
+            question = `Where ${sentence.split(/where/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `Where is this located?`;
+          } else if (sentence.toLowerCase().includes('who')) {
+            question = `Who ${sentence.split(/who/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `Who is involved?`;
+          } else {
+            // For declarative sentences, create a "What is/are" question
+            question = `What is ${answer}?`;
+          }
           
           flashcards.push({
             question: question,
-            answer: qaResult.answer.trim(),
+            answer: answer,
           });
           
-          console.log(`Created flashcard ${i + 1}: Q: "${question}" A: "${qaResult.answer}"`);
+          console.log(`Created flashcard ${i + 1}: Q: "${question}" A: "${answer}"`);
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';

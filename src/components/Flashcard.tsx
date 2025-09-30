@@ -25,8 +25,8 @@ export function Flashcard({ id, question, answer, notes, onDelete }: FlashcardPr
   };
 
   return (
-    <div className="flip-card w-full h-64 cursor-pointer" onClick={handleFlip}>
-      <div className={`flip-card-inner h-full relative ${isFlipped ? 'flipped' : ''}`}>
+    <div className={`flip-card w-full h-64 cursor-pointer ${isFlipped ? 'flipped' : ''}`} onClick={handleFlip}>
+      <div className="flip-card-inner h-full relative">
         {/* Front of the card */}
         <Card className="flip-card-front absolute inset-0 h-full hover:shadow-lg transition-shadow">
           <CardContent className="flex flex-col items-center justify-center h-full p-6 text-center">
