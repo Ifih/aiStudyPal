@@ -34,60 +34,60 @@ serve(async (req) => {
 
     const hf = new HfInference(huggingFaceApiKey);
 
-    console.log('Generating questions from notes...');
+    console.log('Using simpler approach: generating Q&A pairs from notes...');
     
-    // Step 1: Generate questions using T5 model
-    const questionResults = await hf.textGeneration({
-      model: 'mrm8488/t5-base-finetuned-question-generation-ap',
-      inputs: `generate questions: ${notes}`,
-      parameters: {
-        max_new_tokens: 200,
-        temperature: 0.7,
-        return_full_text: false,
-      },
-    });
+    // Use a simpler approach: extract key information and create flashcards
+    // Split notes into sentences and create Q&A pairs
+    const sentences = notes
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 20 && s.length < 200);
 
-    console.log('Questions generated:', questionResults);
-
-    // Extract questions from the response
-    const generatedQuestions = questionResults.generated_text
-      .split('\n')
-      .filter((q: string) => q.trim().length > 0)
-      .map((q: string) => q.replace(/^\d+\.\s*/, '').trim())
-      .slice(0, 5);
-
-    if (generatedQuestions.length === 0) {
-      throw new Error('No questions could be generated from the notes');
+    if (sentences.length === 0) {
+      throw new Error('Notes are too short or improperly formatted');
     }
 
-    console.log('Processing questions:', generatedQuestions);
+    console.log(`Found ${sentences.length} sentences to process`);
 
-    // Step 2: Generate answers for each question using RoBERTa model
+    // For each sentence, try to generate a question and answer
     const flashcards = [];
-    
-    for (const question of generatedQuestions) {
+    const maxCards = Math.min(5, sentences.length);
+
+    for (let i = 0; i < maxCards; i++) {
+      const sentence = sentences[i];
+      
       try {
-        console.log(`Generating answer for: ${question}`);
+        console.log(`Processing sentence ${i + 1}: "${sentence.substring(0, 50)}..."`);
         
-        const answerResult = await hf.questionAnswering({
+        // Use the question-answering model to extract key information
+        // First, create a simple question based on the sentence
+        const simpleQuestion = `What is this about?`;
+        
+        const qaResult = await hf.questionAnswering({
           model: 'deepset/roberta-base-squad2',
           inputs: {
-            question: question,
-            context: notes,
+            question: simpleQuestion,
+            context: sentence,
           },
         });
 
-        console.log('Answer generated:', answerResult);
+        console.log('QA result:', qaResult);
 
-        if (answerResult.answer && answerResult.answer.trim().length > 0) {
+        if (qaResult.answer && qaResult.answer.trim().length > 0) {
+          // Create a flashcard with a question derived from the sentence
+          const question = `What ${sentence.split(' ').slice(0, 5).join(' ')}...?`.replace(/\.\.\.\?$/, '?');
+          
           flashcards.push({
             question: question,
-            answer: answerResult.answer.trim(),
+            answer: qaResult.answer.trim(),
           });
+          
+          console.log(`Created flashcard ${i + 1}: Q: "${question}" A: "${qaResult.answer}"`);
         }
       } catch (error) {
-        console.error(`Error generating answer for question "${question}":`, error);
-        // Continue with other questions even if one fails
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error processing sentence ${i + 1}:`, errorMsg);
+        // Continue with next sentence
       }
     }
 
