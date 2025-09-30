@@ -43,11 +43,6 @@ export function Flashcard({ id, question, answer, notes, onDelete }: FlashcardPr
           <CardContent className="flex flex-col items-center justify-center h-full p-6 text-center relative">
             <h3 className="text-lg font-semibold mb-4 text-foreground">Answer</h3>
             <p className="text-foreground leading-relaxed font-medium">{answer}</p>
-            {notes && (
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground italic">From: {notes}</p>
-              </div>
-            )}
             <div className="absolute bottom-4 right-4 flex space-x-2">
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
               {onDelete && (
