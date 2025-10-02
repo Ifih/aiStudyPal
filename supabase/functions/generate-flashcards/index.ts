@@ -24,11 +24,17 @@ Deno.serve(async (req: Request) => {
     const { notes } = await req.json();
 
     if (!notes || typeof notes !== 'string' || notes.trim().length === 0) {
-      throw new Error('Notes are required and must be a non-empty string');
+      return new Response(
+        JSON.stringify({ error: 'Notes are required and must be a non-empty string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (notes.length > 5000) {
-      throw new Error('Notes must be less than 5000 characters');
+      return new Response(
+        JSON.stringify({ error: `Notes must be less than 5000 characters. Current length: ${notes.length}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Generating flashcards for notes:', notes.substring(0, 100) + '...');
