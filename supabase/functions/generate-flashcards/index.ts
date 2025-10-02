@@ -1,5 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { HfInference } from 'npm:@huggingface/inference@2.8.0';
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.8.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
