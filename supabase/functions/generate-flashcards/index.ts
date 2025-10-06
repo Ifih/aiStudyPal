@@ -1,4 +1,5 @@
-import { HfInference } from 'https://esm.sh/@huggingface/inference@2.8.0';
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { HfInference } from 'npm:@huggingface/inference@2.8.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,17 +24,11 @@ Deno.serve(async (req: Request) => {
     const { notes } = await req.json();
 
     if (!notes || typeof notes !== 'string' || notes.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Notes are required and must be a non-empty string' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Notes are required and must be a non-empty string');
     }
 
     if (notes.length > 5000) {
-      return new Response(
-        JSON.stringify({ error: `Notes must be less than 5000 characters. Current length: ${notes.length}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Notes must be less than 5000 characters');
     }
 
     console.log('Generating flashcards for notes:', notes.substring(0, 100) + '...');
