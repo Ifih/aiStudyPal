@@ -17,6 +17,12 @@ export function useAuth() {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+
+        if (session?.user) {
+          setIsGuest(false);
+          localStorage.removeItem('isGuest');
+        }
+
         setLoading(false);
       }
     );
@@ -25,6 +31,12 @@ export function useAuth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setIsGuest(false);
+        localStorage.removeItem('isGuest');
+      }
+
       setLoading(false);
     });
 
@@ -33,7 +45,7 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -41,6 +53,12 @@ export function useAuth() {
         emailRedirectTo: redirectUrl
       }
     });
+
+    if (!error) {
+      setIsGuest(false);
+      localStorage.removeItem('isGuest');
+    }
+
     return { error };
   };
 
@@ -49,6 +67,12 @@ export function useAuth() {
       email,
       password,
     });
+
+    if (!error) {
+      setIsGuest(false);
+      localStorage.removeItem('isGuest');
+    }
+
     return { error };
   };
 
