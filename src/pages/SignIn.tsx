@@ -72,7 +72,7 @@ export default function SignIn() {
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in to your AI Study Buddy account
+            Sign in to your AI Study Pal account
           </CardDescription>
         </CardHeader>
         <CardContent>

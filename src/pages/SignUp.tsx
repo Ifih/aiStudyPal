@@ -67,7 +67,7 @@ export default function SignUp() {
           </div>
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
           <CardDescription>
-            Join AI Study Buddy and start generating flashcards from your notes
+            Join AI Study Pal and start generating flashcards from your notes
           </CardDescription>
         </CardHeader>
         <CardContent>

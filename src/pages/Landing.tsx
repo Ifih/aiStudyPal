@@ -52,7 +52,7 @@ export default function Landing() {
       {/* Features Section */}
       <section className="py-16 px-4">
         <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose AI Study Buddy?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Why Choose AI Study Pal?</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="text-center hover:shadow-lg transition-shadow">
               <CardHeader>

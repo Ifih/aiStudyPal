@@ -16,7 +16,7 @@ export function Navigation() {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <BookOpen className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold text-foreground">AI Study Buddy</span>
+            <span className="text-xl font-bold text-foreground">AI Study Pal</span>
           </Link>
           
           <div className="flex items-center space-x-4">
