@@ -1,6 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,91 +25,98 @@ serve(async (req) => {
 
     console.log('Generating flashcards for notes:', notes.substring(0, 100) + '...');
 
-    const huggingFaceApiKey = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
-    if (!huggingFaceApiKey) {
-      throw new Error('Hugging Face API key not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('Lovable AI API key not configured');
     }
 
-    const hf = new HfInference(huggingFaceApiKey);
+    console.log('Using Gemini AI 2.5 to generate flashcards...');
 
-    console.log('Using simpler approach: generating Q&A pairs from notes...');
-    
-    // Use a simpler approach: extract key information and create flashcards
-    // Split notes into sentences and create Q&A pairs
-    const sentences = notes
-      .split(/[.!?]+/)
-      .map(s => s.trim())
-      .filter(s => s.length > 20 && s.length < 200);
-
-    if (sentences.length === 0) {
-      throw new Error('Notes are too short or improperly formatted');
-    }
-
-    console.log(`Found ${sentences.length} sentences to process`);
-
-    // For each sentence, try to generate a question and answer
-    const flashcards = [];
-    const maxCards = Math.min(5, sentences.length);
-
-    for (let i = 0; i < maxCards; i++) {
-      const sentence = sentences[i];
-      
-      try {
-        console.log(`Processing sentence ${i + 1}: "${sentence.substring(0, 50)}..."`);
-        
-        // Use the question-answering model to extract key information
-        // First, create a simple question based on the sentence
-        const simpleQuestion = `What is this about?`;
-        
-        const qaResult = await hf.questionAnswering({
-          model: 'deepset/roberta-base-squad2',
-          inputs: {
-            question: simpleQuestion,
-            context: sentence,
+    // Call Lovable AI Gateway with Gemini 2.5
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful study assistant that creates flashcards from study notes. Generate 5-7 high-quality question-answer pairs that test understanding of key concepts.'
           },
-        });
-
-        console.log('QA result:', qaResult);
-
-        if (qaResult.answer && qaResult.answer.trim().length > 0) {
-          // Create a more natural question based on the answer
-          const answer = qaResult.answer.trim();
-          
-          // Create questions based on the answer type
-          let question;
-          if (sentence.toLowerCase().includes('what is') || sentence.toLowerCase().includes('what are')) {
-            // Extract the subject from sentences that define things
-            const match = sentence.match(/(?:What is|What are)\s+([^?]+)/i);
-            question = match ? `What is ${match[1].trim()}?` : `What is ${answer}?`;
-          } else if (sentence.toLowerCase().includes('how')) {
-            question = `How ${sentence.split(/how/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `What is the explanation?`;
-          } else if (sentence.toLowerCase().includes('when')) {
-            question = `When ${sentence.split(/when/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `When does this occur?`;
-          } else if (sentence.toLowerCase().includes('where')) {
-            question = `Where ${sentence.split(/where/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `Where is this located?`;
-          } else if (sentence.toLowerCase().includes('who')) {
-            question = `Who ${sentence.split(/who/i)[1]?.split(/[.!?]/)[0]?.trim()}?` || `Who is involved?`;
-          } else {
-            // For declarative sentences, create a "What is/are" question
-            question = `What is ${answer}?`;
+          {
+            role: 'user',
+            content: `Create flashcards from these study notes. For each flashcard, provide a clear question and a concise answer. Focus on the most important concepts.\n\nStudy Notes:\n${notes}\n\nGenerate 5-7 flashcards in JSON format as an array with objects containing "question" and "answer" fields.`
           }
-          
-          flashcards.push({
-            question: question,
-            answer: answer,
-          });
-          
-          console.log(`Created flashcard ${i + 1}: Q: "${question}" A: "${answer}"`);
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Error processing sentence ${i + 1}:`, errorMsg);
-        // Continue with next sentence
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Rate limit exceeded. Please try again in a moment.',
+            details: 'Too many requests to the AI service.'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 429 
+          }
+        );
       }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI service requires payment. Please add credits to your workspace.',
+            details: 'Visit Settings -> Workspace -> Usage to add credits.'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 402 
+          }
+        );
+      }
+      const errorText = await response.text();
+      console.error('Gemini AI error:', response.status, errorText);
+      throw new Error('Failed to generate flashcards using Gemini AI');
     }
 
-    if (flashcards.length === 0) {
-      throw new Error('No valid flashcards could be generated from the notes');
+    const aiResponse = await response.json();
+    console.log('AI response received');
+
+    // Parse the AI response
+    const content = aiResponse.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('Invalid response from AI service');
+    }
+
+    let flashcards;
+    try {
+      const parsed = JSON.parse(content);
+      flashcards = parsed.flashcards || parsed.cards || parsed;
+      
+      if (!Array.isArray(flashcards)) {
+        throw new Error('AI response is not in the expected format');
+      }
+
+      // Validate flashcard structure
+      flashcards = flashcards
+        .filter((card: any) => card.question && card.answer)
+        .map((card: any) => ({
+          question: String(card.question).trim(),
+          answer: String(card.answer).trim(),
+        }));
+
+      if (flashcards.length === 0) {
+        throw new Error('No valid flashcards could be extracted from AI response');
+      }
+    } catch (parseError) {
+      console.error('Error parsing AI response:', parseError);
+      throw new Error('Failed to parse flashcards from AI response');
     }
 
     console.log(`Successfully generated ${flashcards.length} flashcards`);
@@ -126,7 +131,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        details: 'Failed to generate flashcards from the provided notes using Hugging Face'
+        details: 'Failed to generate flashcards from the provided notes using Gemini AI'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
