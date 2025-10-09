@@ -31,14 +31,9 @@ export default function Landing() {
                   Get Started Free
                 </Button>
               </Link>
-              <Link to="/signin">
-                <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-                  Sign In
-                </Button>
-              </Link>
-              <Button 
-                variant="secondary" 
-                size="lg" 
+              <Button
+                variant="secondary"
+                size="lg"
                 className="text-lg px-8 py-3"
                 onClick={handleGuestMode}
               >
